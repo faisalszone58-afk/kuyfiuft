@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Typ Auction Tournament — Player Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* =====================================================
+   CSS VARIABLES & RESET
+   ===================================================== */
+:root {
+  --cyan: #00f5ff;
+  --blue: #0066ff;
+  --blue-dark: #003399;
+  --green: #00ff88;
+  --gold: #ffd700;
+  --bg: #060b14;
+  --bg2: #0b1220;
+  --bg3: #0f1930;
+  --glass: rgba(0, 245, 255, 0.04);
+  --glass-border: rgba(0, 245, 255, 0.15);
+  --glass-hover: rgba(0, 245, 255, 0.09);
+  --text: #e8f4ff;
+  --muted: #6a85a8;
+  --radius: 14px;
+  --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* =====================================================
+   BACKGROUND GRID PATTERN
+   ===================================================== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* =====================================================
+   LOADING SCREEN
+   ===================================================== */
+#loader {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+#loader.hidden { opacity: 0; visibility: hidden; }
+
+.loader-ball {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff 0%, #aaa 40%, #333 100%);
+  box-shadow: 0 0 30px rgba(0,245,255,0.6);
+  animation: bounce 0.8s ease-in-out infinite alternate;
+  position: relative;
+}
+.loader-ball::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#00000030 0% 15%, transparent 15% 30%);
+}
+@keyframes bounce {
+  from { transform: translateY(0) scale(1); }
+  to   { transform: translateY(-28px) scale(0.92); }
+}
+.loader-text {
+  margin-top: 24px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  color: var(--cyan);
+  animation: pulse 1.2s ease infinite;
+}
+@keyframes pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+/* =====================================================
+   STICKY NAV
+   ===================================================== */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(6,11,20,0.85);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 0 20px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nav-logo {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  background: linear-gradient(90deg, var(--cyan), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.nav-links {
+  display: flex;
+  gap: 6px;
+}
+.nav-links a {
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 6px 14px;
+  border-radius: 20px;
+  transition: var(--transition);
+  text-transform: uppercase;
+}
+.nav-links a:hover {
+  color: var(--cyan);
+  background: var(--glass);
+}
+
+/* =====================================================
+   HERO / PLAYER OF THE SEASON
+   ===================================================== */
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 60px 20px 50px;
+  text-align: center;
+  z-index: 1;
+}
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 80% at 50% 0%, rgba(0,102,255,0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 50% at 80% 80%, rgba(0,245,255,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+.season-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,215,0,0.08);
+  border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 20px;
+  padding: 6px 18px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 28px;
+  animation: fadeDown 0.6s ease both;
+}
+@keyframes fadeDown { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:none} }
+
+.pot-card {
+  position: relative;
+  display: inline-block;
+  max-width: 480px;
+  width: 100%;
+  background: linear-gradient(135deg, rgba(0,102,255,0.12), rgba(0,245,255,0.06));
+  border: 1px solid rgba(0,245,255,0.25);
+  border-radius: 24px;
+  padding: 36px 32px 32px;
+  backdrop-filter: blur(20px);
+  animation: fadeUp 0.7s ease 0.1s both;
+  overflow: hidden;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
+
+/* Glowing border animation */
+.pot-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 24px;
+  background: conic-gradient(
+    from var(--angle, 0deg),
+    transparent 0%,
+    var(--cyan) 10%,
+    transparent 20%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1px;
+  animation: spinGlow 3s linear infinite;
+}
+@property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes spinGlow { to { --angle: 360deg; } }
+
+.pot-trophy { font-size: 2.8rem; margin-bottom: 12px; filter: drop-shadow(0 0 12px var(--gold)); animation: trophyBob 2s ease-in-out infinite; }
+@keyframes trophyBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+.pot-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, #fff 30%, var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.pot-team {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--cyan);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+.pot-stats {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+}
+.pot-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.pot-stat-icon { font-size: 1.2rem; }
+.pot-stat-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+}
+.pot-stat-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.pot-divider {
+  width: 1px;
+  background: var(--glass-border);
+  height: 50px;
+  align-self: center;
+}
+
+/* =====================================================
+   SECTION WRAPPER
+   ===================================================== */
+.section {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 16px 60px;
+  position: relative;
+  z-index: 1;
+}
+.section-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--glass-border), transparent);
+}
+
+/* =====================================================
+   LEADERBOARD CARDS (TOP SCORER + MVP)
+   ===================================================== */
+.leaderboards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+@media(max-width:600px){ .leaderboards { grid-template-columns: 1fr; } }
+
+.lb-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 20px 18px;
+  backdrop-filter: blur(12px);
+}
+.lb-header {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: background var(--transition);
+}
+.lb-row:hover { background: var(--glass-hover); }
+.lb-rank {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  width: 18px;
+}
+.lb-rank.gold   { color: #ffd700; }
+.lb-rank.silver { color: #c0c0c0; }
+.lb-rank.bronze { color: #cd7f32; }
+.lb-pname {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-team-badge {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+.lb-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--cyan);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* =====================================================
+   TEAM SECTIONS (ACCORDION)
+   ===================================================== */
+.teams-wrapper { display: flex; flex-direction: column; gap: 12px; }
+
+.team-block {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color var(--transition);
+}
+.team-block:hover { border-color: rgba(0,245,255,0.3); }
+.team-block.open  { border-color: rgba(0,245,255,0.4); }
+
+.team-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  user-select: none;
+  transition: background var(--transition);
+}
+.team-header:hover { background: var(--glass-hover); }
+
+.team-left { display: flex; align-items: center; gap: 14px; }
+.team-color {
+  width: 4px;
+  height: 36px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.team-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+.team-meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.team-right { display: flex; align-items: center; gap: 18px; }
+.team-mini-stat { text-align: center; }
+.team-mini-stat span { display: block; }
+.team-mini-stat .val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--cyan);
+}
+.team-mini-stat .lbl { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.team-chevron {
+  width: 26px; height: 26px;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted);
+  font-size: 0.7rem;
+  transition: transform var(--transition), color var(--transition), border-color var(--transition);
+  flex-shrink: 0;
+}
+.team-block.open .team-chevron {
+  transform: rotate(180deg);
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+
+/* Accordion body */
+.team-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+.team-block.open .team-body { grid-template-rows: 1fr; }
+.team-body-inner { overflow: hidden; }
+.team-body-content { padding: 12px 16px 16px; }
+
+/* =====================================================
+   PLAYER TABLE / CARDS
+   ===================================================== */
+.player-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.player-table thead tr {
+  border-bottom: 1px solid var(--glass-border);
+}
+.player-table th {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 12px;
+  text-align: left;
+}
+.player-table th:not(:first-child) { text-align: center; }
+
+.player-row {
+  border-radius: 10px;
+  transition: background var(--transition), box-shadow var(--transition);
+  cursor: default;
+  position: relative;
+}
+.player-row:hover {
+  background: var(--glass-hover);
+  box-shadow: inset 0 0 0 1px rgba(0,245,255,0.18), 0 0 18px rgba(0,245,255,0.04);
+}
+.player-row td {
+  padding: 11px 12px;
+  font-size: 0.88rem;
+  color: var(--text);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.player-row:last-child td { border-bottom: none; }
+
+.player-row td:not(:first-child) { text-align: center; }
+
+.player-index {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.62rem;
+  color: var(--muted);
+  margin-right: 8px;
+}
+.player-name { font-weight: 600; }
+.stat-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.stat-goals { color: var(--cyan); }
+.stat-mvp   { color: var(--gold); }
+.stat-matches { color: var(--muted); }
+
+/* top scorer badge */
+.top-scorer-badge {
+  display: inline-block;
+  background: rgba(0,245,255,0.1);
+  border: 1px solid rgba(0,245,255,0.3);
+  border-radius: 20px;
+  font-size: 0.6rem;
+  padding: 2px 7px;
+  color: var(--cyan);
+  vertical-align: middle;
+  margin-left: 6px;
+  letter-spacing: 0.08em;
+}
+.mvp-badge {
+  display: inline-block;
+  background: rgba(255,215,0,0.1);
+  border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 20px;
+  font-size: 0.6rem;
+  padding: 2px 7px;
+  color: var(--gold);
+  vertical-align: middle;
+  margin-left: 6px;
+  letter-spacing: 0.08em;
+}
+
+/* Mobile card view for very small screens */
+@media(max-width: 500px) {
+  .player-table thead { display: none; }
+  .player-table, .player-table tbody, .player-row, .player-row td { display: block; width: 100%; }
+  .player-row {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 12px 14px;
+  }
+  .player-row td { padding: 3px 0; border: none; display: flex; justify-content: space-between; align-items: center; font-size: 0.84rem; }
+  .player-row td::before {
+    content: attr(data-label);
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+  }
+  .player-row td:first-child::before { display: none; }
+  .player-row td:first-child { font-size: 0.95rem; font-weight: 700; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; margin-bottom: 4px; }
+}
+
+/* =====================================================
+   FOOTER
+   ===================================================== */
+footer {
+  text-align: center;
+  padding: 32px 20px 40px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  border-top: 1px solid var(--glass-border);
+  position: relative; z-index: 1;
+}
+footer span { color: var(--cyan); }
+
+/* =====================================================
+   COUNTER ANIMATION HELPER
+   ===================================================== */
+.count-up { display: inline-block; }
+
+/* =====================================================
+   SCROLL REVEAL
+   ===================================================== */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loader">
+  <div class="loader-ball"></div>
+  <div class="loader-text">Loading Stats...</div>
+</div>
+
+<!-- STICKY NAV -->
+<nav>
+  <div class="nav-logo">⚽ TYP Auction</div>
+  <div class="nav-links">
+    <a href="#leaderboards">Leaders</a>
+    <a href="#teams">Teams</a>
+  </div>
+</nav>
+
+<!-- =====================================================
+     HERO — PLAYER OF THE SEASON
+     ===================================================== -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="season-label">🏆 Player of the Season</div>
+  <div class="pot-card" id="potCard">
+    <div class="pot-trophy">🏆</div>
+    <div class="pot-name" id="potName">—</div>
+    <div class="pot-team" id="potTeam">—</div>
+    <div class="pot-stats">
+      <div class="pot-stat">
+        <div class="pot-stat-icon">⚽</div>
+        <div class="pot-stat-val count-up" id="potGoals">0</div>
+        <div class="pot-stat-label">Goals</div>
+      </div>
+      <div class="pot-divider"></div>
+      <div class="pot-stat">
+        <div class="pot-stat-icon">🌟</div>
+        <div class="pot-stat-val count-up" id="potMvp">0</div>
+        <div class="pot-stat-label">MVP Awards</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     LEADERBOARDS
+     ===================================================== -->
+<section class="section" id="leaderboards">
+  <div class="section-title">📊 Leaderboards</div>
+  <div class="leaderboards reveal">
+    <!-- Top Scorer -->
+    <div class="lb-card">
+      <div class="lb-header">⚽ Top Scorers</div>
+      <div id="scorerList"></div>
+    </div>
+    <!-- MVP -->
+    <div class="lb-card">
+      <div class="lb-header">🌟 MVP Leaders</div>
+      <div id="mvpList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     TEAM SECTIONS
+     ===================================================== -->
+<section class="section" id="teams">
+  <div class="section-title">🛡️ Teams & Players</div>
+  <div class="teams-wrapper reveal" id="teamsWrapper"></div>
+</section>
+
+<footer>
+  <p>⚽ <span>Typ Auction Tournament</span> · Player Stats Dashboard · All rights reserved</p>
+</footer>
+
+<script>
+/* =====================================================
+   ██████████████████████████████████████████████████
+   PLAYER DATA — EDIT THIS SECTION IN VS CODE
+   ██████████████████████████████████████████████████
+
+   HOW TO UPDATE:
+   • Change any player's matches, goals, or mvp values.
+   • Save the file — the page recalculates everything automatically.
+   • Player of the Season = highest (goals + mvp) combined score.
+   ===================================================== */
+
+const TEAM_COLORS = [
+  '#00f5ff', // Team A — Cyan
+  '#ff4d6d', // Team B — Red-Pink
+  '#ffd700', // Team C — Gold
+  '#00ff88', // Team D — Green
+  '#bf5af2', // Team E — Purple
+  '#ff8c00', // Team F — Orange
+];
+
+const teams = [
+  {
+    team: "Team A",
+    players: [
+      // { name: "Player Name", matches: 0, goals: 0, mvp: 0 },
+      { name: "Arif Hossain",   matches: 7, goals: 12, mvp: 3 },
+      { name: "Rahim Uddin",    matches: 6, goals:  9, mvp: 2 },
+      { name: "Shuvo Khan",     matches: 7, goals:  7, mvp: 1 },
+      { name: "Nahid Alam",     matches: 5, goals:  5, mvp: 0 },
+      { name: "Taufiq Ahmed",   matches: 6, goals:  4, mvp: 1 },
+      { name: "Riaz Molla",     matches: 7, goals:  3, mvp: 0 },
+      { name: "Imran Sheikh",   matches: 4, goals:  3, mvp: 1 },
+      { name: "Emon Das",       matches: 7, goals:  2, mvp: 0 },
+      { name: "Forhad Ali",     matches: 6, goals:  2, mvp: 0 },
+      { name: "Sabbir Islam",   matches: 5, goals:  1, mvp: 0 },
+      { name: "Alamgir Haque",  matches: 3, goals:  0, mvp: 0 },
+    ]
+  },
+  {
+    team: "Team B",
+    players: [
+      { name: "Karim Bepari",   matches: 7, goals: 11, mvp: 4 },
+      { name: "Shakil Hasan",   matches: 7, goals:  8, mvp: 2 },
+      { name: "Roni Mahmud",    matches: 6, goals:  6, mvp: 1 },
+      { name: "Jabed Hossain",  matches: 5, goals:  5, mvp: 1 },
+      { name: "Limon Chandra",  matches: 7, goals:  4, mvp: 0 },
+      { name: "Pavel Dey",      matches: 6, goals:  4, mvp: 0 },
+      { name: "Nayem Sarker",   matches: 4, goals:  3, mvp: 1 },
+      { name: "Tushar Roy",     matches: 7, goals:  2, mvp: 0 },
+      { name: "Babu Miah",      matches: 5, goals:  1, mvp: 0 },
+      { name: "Hiron Talukder", matches: 6, goals:  1, mvp: 0 },
+      { name: "Polash Biswas",  matches: 2, goals:  0, mvp: 0 },
+    ]
+  },
+  {
+    team: "Team C",
+    players: [
+      { name: "Monir Uddin",    matches: 7, goals: 10, mvp: 2 },
+      { name: "Sumon Akter",    matches: 7, goals:  7, mvp: 3 },
+      { name: "Faruk Ahmed",    matches: 6, goals:  6, mvp: 1 },
+      { name: "Delwar Hossain", matches: 5, goals:  5, mvp: 0 },
+      { name: "Mizanur Rahman", matches: 7, goals:  4, mvp: 0 },
+      { name: "Selim Chowdhury",matches: 4, goals:  3, mvp: 1 },
+      { name: "Mostafa Kamal",  matches: 6, goals:  3, mvp: 0 },
+      { name: "Raju Mridha",    matches: 5, goals:  2, mvp: 0 },
+      { name: "Dipu Barua",     matches: 7, goals:  2, mvp: 0 },
+      { name: "Hasan Mamun",    matches: 3, goals:  1, mvp: 0 },
+      { name: "Kamrul Islam",   matches: 2, goals:  0, mvp: 0 },
+    ]
+  },
+  {
+    team: "Team D",
+    players: [
+      { name: "Nasir Hossain",  matches: 7, goals:  9, mvp: 3 },
+      { name: "Mahbub Alam",    matches: 6, goals:  8, mvp: 1 },
+      { name: "Saiful Bari",    matches: 7, goals:  6, mvp: 2 },
+      { name: "Kabir Ahmed",    matches: 5, goals:  5, mvp: 0 },
+      { name: "Nazrul Islam",   matches: 6, goals:  4, mvp: 1 },
+      { name: "Minhaj Uddin",   matches: 7, goals:  3, mvp: 0 },
+      { name: "Torikul Alam",   matches: 4, goals:  3, mvp: 0 },
+      { name: "Zahir Hossain",  matches: 5, goals:  2, mvp: 0 },
+      { name: "Shahidul Haque", matches: 6, goals:  1, mvp: 0 },
+      { name: "Arafat Hossain", matches: 3, goals:  1, mvp: 0 },
+      { name: "Rukon Miah",     matches: 2, goals:  0, mvp: 0 },
+    ]
+  },
+  {
+    team: "Team E",
+    players: [
+      { name: "Rasel Rana",     matches: 7, goals: 14, mvp: 5 },
+      { name: "Aminul Islam",   matches: 7, goals:  8, mvp: 1 },
+      { name: "Belal Hossain",  matches: 6, goals:  6, mvp: 2 },
+      { name: "Jahangir Alam",  matches: 5, goals:  5, mvp: 0 },
+      { name: "Osman Gani",     matches: 7, goals:  3, mvp: 0 },
+      { name: "Rafiqul Islam",  matches: 6, goals:  3, mvp: 1 },
+      { name: "Sirajul Haque",  matches: 4, goals:  2, mvp: 0 },
+      { name: "Tanvir Ahmed",   matches: 7, goals:  2, mvp: 0 },
+      { name: "Habibur Rahman", matches: 5, goals:  1, mvp: 0 },
+      { name: "Golam Rabbi",    matches: 3, goals:  0, mvp: 0 },
+      { name: "Masud Rana",     matches: 2, goals:  0, mvp: 0 },
+    ]
+  },
+  {
+    team: "Team F",
+    players: [
+      { name: "Shafiqul Islam", matches: 7, goals:  8, mvp: 2 },
+      { name: "Nurul Huda",     matches: 6, goals:  7, mvp: 2 },
+      { name: "Billal Hossain", matches: 7, goals:  6, mvp: 1 },
+      { name: "Ahad Chowdhury", matches: 5, goals:  5, mvp: 1 },
+      { name: "Mokarram Ali",   matches: 6, goals:  4, mvp: 0 },
+      { name: "Jakir Hossain",  matches: 7, goals:  3, mvp: 0 },
+      { name: "Touhid Uddin",   matches: 4, goals:  2, mvp: 0 },
+      { name: "Abdur Rahim",    matches: 5, goals:  2, mvp: 0 },
+      { name: "Shamsul Haque",  matches: 6, goals:  1, mvp: 1 },
+      { name: "Mizanul Karim",  matches: 3, goals:  1, mvp: 0 },
+      { name: "Lutfor Rahman",  matches: 2, goals:  0, mvp: 0 },
+    ]
+  }
+];
+
+/* =====================================================
+   DERIVED DATA — DO NOT EDIT BELOW THIS LINE
+   Everything is auto-calculated from the teams array.
+   ===================================================== */
+
+// Flatten all players with team info
+function getAllPlayers() {
+  return teams.flatMap((t, ti) =>
+    t.players.map(p => ({ ...p, teamName: t.team, teamIndex: ti }))
+  );
+}
+
+// Score formula: goals*2 + mvp (weighted)
+function potScore(p) { return p.goals * 2 + p.mvp; }
+
+// Top 5 scorers
+function getTopScorers(n = 5) {
+  return [...getAllPlayers()].sort((a,b) => b.goals - a.goals || b.mvp - a.mvp).slice(0, n);
+}
+
+// Top 5 MVP
+function getTopMVPs(n = 5) {
+  return [...getAllPlayers()].sort((a,b) => b.mvp - a.mvp || b.goals - a.goals).slice(0, n);
+}
+
+// Player of the Season
+function getPlayerOfSeason() {
+  return [...getAllPlayers()].sort((a,b) => potScore(b) - potScore(a))[0];
+}
+
+// Team totals
+function teamGoals(t)   { return t.players.reduce((s,p) => s + p.goals,  0); }
+function teamMVPs(t)    { return t.players.reduce((s,p) => s + p.mvp,    0); }
+function teamMatches(t) { return t.players.reduce((s,p) => s + p.matches, 0); }
+
+/* =====================================================
+   COUNTER ANIMATION
+   ===================================================== */
+function animateCount(el, target, duration = 900) {
+  const start = performance.now();
+  function step(now) {
+    const pct = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - pct, 3); // ease-out cubic
+    el.textContent = Math.round(eased * target);
+    if (pct < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* =====================================================
+   RENDER HERO — PLAYER OF THE SEASON
+   ===================================================== */
+function renderHero() {
+  const pot = getPlayerOfSeason();
+  if (!pot) return;
+  document.getElementById('potName').textContent = pot.name;
+  document.getElementById('potTeam').textContent = pot.teamName;
+  setTimeout(() => {
+    animateCount(document.getElementById('potGoals'), pot.goals);
+    animateCount(document.getElementById('potMvp'),   pot.mvp);
+  }, 600);
+}
+
+/* =====================================================
+   RENDER LEADERBOARDS
+   ===================================================== */
+const RANK_CLASSES = ['gold','silver','bronze','',''];
+const RANK_ICONS   = ['🥇','🥈','🥉','4','5'];
+
+function buildLBRow(rank, player, val) {
+  return `
+    <div class="lb-row">
+      <div class="lb-rank ${RANK_CLASSES[rank]}">${RANK_ICONS[rank]}</div>
+      <div class="lb-pname">${player.name}</div>
+      <div class="lb-team-badge">${player.teamName}</div>
+      <div class="lb-val">${val}</div>
+    </div>`;
+}
+
+function renderLeaderboards() {
+  const scorers = getTopScorers();
+  const mvps    = getTopMVPs();
+  document.getElementById('scorerList').innerHTML =
+    scorers.map((p,i) => buildLBRow(i, p, p.goals + ' ⚽')).join('');
+  document.getElementById('mvpList').innerHTML =
+    mvps.map((p,i) => buildLBRow(i, p, p.mvp + ' 🌟')).join('');
+}
+
+/* =====================================================
+   RENDER TEAMS
+   ===================================================== */
+function renderTeams() {
+  const wrapper = document.getElementById('teamsWrapper');
+  const allPlayers = getAllPlayers();
+  const topScorer  = getTopScorers(1)[0];
+  const topMVP     = getTopMVPs(1)[0];
+
+  wrapper.innerHTML = teams.map((team, ti) => {
+    const color   = TEAM_COLORS[ti];
+    const totalG  = teamGoals(team);
+    const totalM  = teamMVPs(team);
+
+    const rows = team.players.map((p, pi) => {
+      const isTopScorer = p.name === topScorer.name && p.goals > 0;
+      const isTopMVP    = p.name === topMVP.name   && p.mvp > 0;
+      return `
+        <tr class="player-row">
+          <td data-label="Player">
+            <span class="player-index">${String(pi+1).padStart(2,'0')}</span>
+            <span class="player-name">${p.name}</span>
+            ${isTopScorer ? '<span class="top-scorer-badge">Top Scorer</span>' : ''}
+            ${isTopMVP    ? '<span class="mvp-badge">⭐ MVP</span>'              : ''}
+          </td>
+          <td data-label="Matches" class="stat-matches stat-val">${p.matches}</td>
+          <td data-label="Goals"   class="stat-goals  stat-val">${p.goals}</td>
+          <td data-label="MVP"     class="stat-mvp    stat-val">${p.mvp}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+      <div class="team-block" id="team-${ti}">
+        <div class="team-header" onclick="toggleTeam(${ti})">
+          <div class="team-left">
+            <div class="team-color" style="background:${color}; box-shadow:0 0 8px ${color}66"></div>
+            <div>
+              <div class="team-name">${team.team}</div>
+              <div class="team-meta">11 Players</div>
+            </div>
+          </div>
+          <div class="team-right">
+            <div class="team-mini-stat">
+              <span class="val" style="color:${color}">${totalG}</span>
+              <span class="lbl">Goals</span>
+            </div>
+            <div class="team-mini-stat">
+              <span class="val" style="color:var(--gold)">${totalM}</span>
+              <span class="lbl">MVPs</span>
+            </div>
+            <div class="team-chevron">▼</div>
+          </div>
+        </div>
+        <div class="team-body">
+          <div class="team-body-inner">
+            <div class="team-body-content">
+              <table class="player-table">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Matches</th>
+                    <th>Goals</th>
+                    <th>MVP</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* =====================================================
+   ACCORDION TOGGLE
+   ===================================================== */
+function toggleTeam(index) {
+  const block = document.getElementById('team-' + index);
+  block.classList.toggle('open');
+}
+
+/* =====================================================
+   SCROLL REVEAL
+   ===================================================== */
+function initReveal() {
+  const els = document.querySelectorAll('.reveal');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  els.forEach(el => obs.observe(el));
+}
+
+/* =====================================================
+   BOOT
+   ===================================================== */
+window.addEventListener('DOMContentLoaded', () => {
+  // Render everything
+  renderHero();
+  renderLeaderboards();
+  renderTeams();
+  initReveal();
+
+  // Hide loader after short delay
+  setTimeout(() => {
+    document.getElementById('loader').classList.add('hidden');
+  }, 1200);
+});
+</script>
+</body>
+</html>
